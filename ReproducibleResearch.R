@@ -1,96 +1,53 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
-
-
-## Loading and preprocessing the data
-The following read.csv() function reads in the data for the activity tracker.
-```{r}
+#read in data
 tracker <- read.csv("./activity.csv")
-```
-Using the head() function, you can see the first few rows of the data. I used the class() function to check what the classes were for many of the columns.
-```{r}
+#processing data
 head(tracker)
 class(tracker$date)
 class(tracker$interval)
-```
-After reviewing some of the data, I created a new column that was a factor variable of the interval column in the dataset.
-```{r}
+levels(tracker$date)
 tracker$factorinterval <- as.factor(tracker$interval)
-```
 
-## What is mean total number of steps taken per day?
-In order to calculate the mean number of steps taken per day, I had to calculate the number of steps taken per day.  The following code does this.
-```{r}
+#total steps a day
 stepsday <- with(tracker, tapply(steps, date, sum, na.rm = TRUE))
-```
 
-From there, I created a histogram of the steps per day.
-```{r}
+#histogram
+png("histogram1.png")
 hist(stepsday, xlab = "Steps per Day", main = "Histogram of Steps per Day", 
      col = "red")
-```
+dev.off()
 
-After creating the histogram, I took the mean and median of the steps per day.
-```{r}
+#median/mean of steps per day
 mean(stepsday)
 median(stepsday)
-```
-## What is the average daily activity pattern?
-In order to create the time series plot, I needed to calculate the average number of steps per time interval.
 
-```{r}
+#time series plot
 meaninterval <- with(tracker, tapply(steps, factorinterval, mean, 
                                      na.rm = TRUE, simplify = FALSE))
-```
-Using the set of data above, I created the time series plot for the number of steps per time interval.
 
-```{r}
-plot(unique(tracker$interval), meaninterval, type = "l", xlim = c(0, 2450), 
+png("TimeSeries1.png")
+plot(unique(tracker$interval), meaninterval, type = "l", xlim = c(0, 2400), 
      xlab = "5 min Intervals", ylab = "Average Number of Steps", 
      main = "Average Number of Steps Based on 5 Minute Intervals")
-```
+dev.off()
 
-The next thing I did was calculate the max of the averaged interval data to find the interval that had the most steps in the 2 months.
-
-```{r}
+#Max average steps for intervals
 stepsday1 <- aggregate(tracker$steps, by = list(tracker$factorinterval), 
                        FUN = mean, na.rm = TRUE)
 stepsday1 <- stepsday1[order(stepsday1$x),]
 tail(stepsday1, n = 1)
-```
 
-The max number of steps occured at 835 for the 2 months.
-
-## Imputing missing values
-The next task was to figure out what to do with the missing values in the data.  I first calculated the number of missing values below.
-
-```{r}
+#number of NAs in the dataset
 sum(is.na(tracker$steps))
-```
 
-My strategy was to replace the NAs with the average steps per interval per day.  
-
-```{r}
+#replace NAs with mean
+#get means for each day
 daymeans <- aggregate(tracker$steps, by = list(tracker$date), FUN = mean, 
                       na.rm = TRUE)
-daymeans
-```
-
-However, 8 of the days have missing values so, I averaged all of the days from the dataset above and replaced the NAs with that average. The code below does the replacement of the NAs for the aggregated data above.
-
-```{r}
+#get total mean
 rounded <- mean(tracker$steps, na.rm = TRUE)
+#replace NAs from daymeans with total mean
 daymeans[is.na(daymeans)] <- rounded
-daymeans
-```
 
-I then replaced the NAs with the average with the code below.  The average was around 37.  I then checked to see if all the missing values were replaced.
-
-```{r}
 tracker$steps[tracker$date == '2012-10-01'] <- daymeans$x[daymeans$Group.1 == '2012-10-01']
 tracker$steps[tracker$date == '2012-10-08'] <- daymeans$x[daymeans$Group.1 == '2012-10-08']
 tracker$steps[tracker$date == '2012-11-01'] <- daymeans$x[daymeans$Group.1 == '2012-11-01']
@@ -99,34 +56,16 @@ tracker$steps[tracker$date == '2012-11-09'] <- daymeans$x[daymeans$Group.1 == '2
 tracker$steps[tracker$date == '2012-11-10'] <- daymeans$x[daymeans$Group.1 == '2012-11-10']
 tracker$steps[tracker$date == '2012-11-14'] <- daymeans$x[daymeans$Group.1 == '2012-11-14']
 tracker$steps[tracker$date == '2012-11-30'] <- daymeans$x[daymeans$Group.1 == '2012-11-30']
-```
 
-Here is the calculation of missing values.
-```{r}
-sum(is.na(tracker$steps))
-```
-
-I then created a histogram of the new dataset without NAs.
-
-```{r}
 stepsday1 <- with(tracker, tapply(steps, date, sum, na.rm = TRUE))
+png("histogram2.png")
 hist(stepsday1, xlab = "Steps per Day", main = "Histogram of Steps per Day", 
      col = "red")
-```
-
-I then calculated the mean and median of the new dataset.
-
-```{r}
+dev.off()
 mean(stepsday1)
 median(stepsday1)
-```
 
-Both the median and the mean are now higher than the original dataset with missing values.
-
-## Are there differences in activity patterns between weekdays and weekends?
-The first thing to do when checking the differences between the weekend and weekdays was to create a weekday variable.  This is done below.
-
-```{r}
+# Create a Factor for weekday and weekend
 tracker$weekday <- as.Date(tracker$date, format = "%Y-%m-%d")
 tracker$weekday <- weekdays(tracker$weekday)
 tracker$weekday[tracker$weekday == "Monday"] <- "Weekday"
@@ -137,44 +76,26 @@ tracker$weekday[tracker$weekday == "Friday"] <- "Weekday"
 tracker$weekday[tracker$weekday == "Saturday"] <- "Weekend"
 tracker$weekday[tracker$weekday == "Sunday"] <- "Weekend"
 tracker$weekday <- as.factor(tracker$weekday)
-head(tracker)
-```
 
-The next thing to do was to create a panel plot to show the average number of steps per 5 min interval for weekdays and weekends.  I first subsetted the data into weekends and weekdays.
-
-```{r}
+#time series plot weekend vs weekday
 weekday <- subset(tracker, tracker$weekday == "Weekday")
 weekend <- subset(tracker, tracker$weekday == "Weekend")
-```
 
-I then calculated the means of each dataset based on the intervals.
-
-```{r}
 meanweekday <- with(weekday, tapply(steps, factorinterval, mean, 
                                      na.rm = TRUE, simplify = TRUE))
 meanweekend <- with(weekend, tapply(steps, factorinterval, mean, 
                                     na.rm = TRUE, simplify = TRUE))
-```
 
-I then created a data frame of the means for weekends and weekdays to make it easier to plot the data.
-
-```{r}
 intval <- c(unique(tracker$interval), unique(tracker$interval))
 days <- rep("Weekday", times = 288)
 ends <- rep("Weekend", times = 288)
 dfstep <- c(meanweekday, meanweekend)
 week <- c(days, ends)
 means <- data.frame(intval, dfstep, week)
-head(means)
-```
 
-I then used the ggplot to plot the data based on weekends and weekdays.
-```{r, echo=FALSE}
-library(ggplot2)
-```
-
-```{r}
+png("timeseries2.png")
 ggplot(data = means, aes(intval, dfstep, fill = week)) + geom_line() +
       facet_grid(week ~ .) + xlab("Interval") +
       ylab("Average Steps") + ggtitle("Average Steps Weekend Vs. Weekday")
-```
+dev.off()
+
